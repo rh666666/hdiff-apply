@@ -1,1 +1,1 @@
-# HdiffApply
+# hdiff-apply
