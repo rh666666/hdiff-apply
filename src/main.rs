@@ -1,7 +1,7 @@
 use std::{
     io::{stdin, stdout, Write},
     path::PathBuf,
-    process,
+    process, time::Instant,
 };
 
 mod deletefiles;
@@ -37,6 +37,8 @@ fn main() {
 
     let mut log_msg: Vec<String> = Vec::new();
 
+    let now = Instant::now();
+
     match delete_files.remove() {
         Ok(_) => log_msg.push(format!(
             "Deleted {} files listed in deletefiles.txt",
@@ -48,7 +50,7 @@ fn main() {
     match hdiff_map.patch() {
         Ok(_) => log_msg.push(format!(
             "Patched {} files listed in hdiffmap.json",
-            hdiff_map.items
+            hdiff_map.items.lock().unwrap()
         )),
         Err(e) => eprintln!("Error: {}", e),
     }
@@ -56,4 +58,6 @@ fn main() {
     for msg in log_msg {
         tracing::info!("{msg}");
     }
+
+    tracing::info!("Finished in {:.2?}", now.elapsed())
 }

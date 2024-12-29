@@ -1,17 +1,17 @@
 use serde::Deserialize;
 use serde_json::Value;
+use thiserror::Error;
+use rayon::prelude::*;
 use std::{
     fs::{self},
     io::{self},
     path::PathBuf,
-    process::Command,
+    process::Command, sync::{Arc, Mutex},
 };
-
-use thiserror::Error;
 
 pub struct HDiffMap {
     game_path: PathBuf,
-    pub items: u32,
+    pub items: Arc<Mutex<u32>>,
 }
 
 #[derive(Debug, Error)]
@@ -25,7 +25,7 @@ pub enum PatchError {
 }
 
 #[derive(Deserialize)]
-pub struct DiffMap {
+struct DiffMap {
     source_file_name: String,
     target_file_name: String,
     patch_file_name: String,
@@ -35,7 +35,7 @@ impl HDiffMap {
     pub fn new(game_path: &PathBuf) -> Self {
         Self {
             game_path: game_path.clone(),
-            items: 0,
+            items: Arc::new(Mutex::new(0)),
         }
     }
 
@@ -61,7 +61,7 @@ impl HDiffMap {
         let path = &self.game_path;
         let hdiff = self.load_diff_map()?;
 
-        for entry in &hdiff {
+        hdiff.into_par_iter().for_each(|entry| {
             let output = Command::new("hpatchz")
                 .arg(path.join(&entry.source_file_name))
                 .arg(path.join(&entry.patch_file_name))
@@ -71,13 +71,15 @@ impl HDiffMap {
 
             if !output.stdout.is_empty() {
                 tracing::info!("{}", String::from_utf8_lossy(&output.stdout).trim());
-                self.items += 1;
+
+                let mut items = self.items.lock().unwrap();
+                *items += 1;
             }
 
             if !output.stderr.is_empty() {
                 tracing::error!("{}", String::from_utf8_lossy(&output.stderr).trim());
             }
-        }
+        });
 
         Ok(())
     }
