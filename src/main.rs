@@ -10,7 +10,13 @@ mod hdiffmap;
 use deletefiles::DeleteFiles;
 use hdiffmap::HDiffMap;
 
+fn init_tracing() {
+    tracing_subscriber::fmt().without_time().init();
+}
+
 fn main() {
+    init_tracing();
+
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() != 2 {
@@ -29,13 +35,25 @@ fn main() {
     let mut delete_files = DeleteFiles::new(&path);
     let mut hdiff_map = HDiffMap::new(&path);
 
+    let mut log_msg: Vec<String> = Vec::new();
+
     match delete_files.remove() {
-        Ok(_) => println!("Deleted {} files listed in deletefiles.txt", delete_files.items),
+        Ok(_) => log_msg.push(format!(
+            "Deleted {} files listed in deletefiles.txt",
+            delete_files.items
+        )),
         Err(e) => eprintln!("Error: {}", e),
     }
 
     match hdiff_map.patch() {
-        Ok(_) => println!("Patched {} files listed in hdiffmap.json", hdiff_map.items),
+        Ok(_) => log_msg.push(format!(
+            "Patched {} files listed in hdiffmap.json",
+            hdiff_map.items
+        )),
         Err(e) => eprintln!("Error: {}", e),
+    }
+
+    for msg in log_msg {
+        tracing::info!("{msg}");
     }
 }

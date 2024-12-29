@@ -61,8 +61,6 @@ impl HDiffMap {
         let path = &self.game_path;
         let hdiff = self.load_diff_map()?;
 
-        self.items = hdiff.len() as u32;
-
         for entry in &hdiff {
             let output = Command::new("hpatchz")
                 .arg(path.join(&entry.source_file_name))
@@ -72,11 +70,12 @@ impl HDiffMap {
                 .expect("Failed to execute hpatchz");
 
             if !output.stdout.is_empty() {
-                println!("{}", String::from_utf8_lossy(&output.stdout));
+                tracing::info!("{}", String::from_utf8_lossy(&output.stdout).trim());
+                self.items += 1;
             }
 
             if !output.stderr.is_empty() {
-                eprint!("{}", String::from_utf8_lossy(&output.stderr));
+                tracing::error!("{}", String::from_utf8_lossy(&output.stderr).trim());
             }
         }
 

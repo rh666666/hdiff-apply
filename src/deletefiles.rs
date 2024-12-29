@@ -45,11 +45,12 @@ impl DeleteFiles {
             let full_path = &self.game_path.join(file);
 
             match remove_file(&full_path) {
-                Ok(_) => println!("Deleted {}", full_path.display()),
-                Err(e) => eprintln!("Failed to delete {}: {}", full_path.display(), e),
+                Ok(_) => {
+                    tracing::info!("Deleted {}", full_path.display());
+                    self.items += 1;
+                }
+                Err(e) => tracing::error!("Failed to delete {}: {}", full_path.display(), e),
             }
-
-            self.items += 1;
         }
 
         Ok(())
