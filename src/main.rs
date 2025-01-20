@@ -14,6 +14,15 @@ fn init_tracing() {
     tracing_subscriber::fmt().without_time().init();
 }
 
+fn wait_for_input(){
+    print!("Press enter to exit");
+    stdout().flush().unwrap();
+
+    stdin().read_line(&mut String::new()).unwrap();
+
+    process::exit(1)
+}
+
 fn main() {
     init_tracing();
 
@@ -22,12 +31,7 @@ fn main() {
     if args.len() != 2 {
         println!("Usage: {} [game_folder]", &args[0]);
 
-        print!("Press enter to exit");
-        stdout().flush().unwrap();
-
-        stdin().read_line(&mut String::new()).unwrap();
-
-        process::exit(1)
+        wait_for_input();
     }
 
     let path = PathBuf::from(&args[1]);
@@ -59,5 +63,7 @@ fn main() {
         tracing::info!("{msg}");
     }
 
-    tracing::info!("Finished in {:.2?}", now.elapsed())
+    tracing::info!("Finished in {:.2?}", now.elapsed());
+
+    wait_for_input();
 }
