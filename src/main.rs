@@ -1,7 +1,8 @@
 use std::{
     io::{stdin, stdout, Write},
     path::PathBuf,
-    process, time::Instant,
+    process,
+    time::Instant,
 };
 
 mod deletefiles;
@@ -15,7 +16,7 @@ fn init_tracing() {
     tracing_subscriber::fmt().without_time().init();
 }
 
-fn wait_for_input(){
+fn wait_for_input() {
     print!("Press enter to exit");
     stdout().flush().unwrap();
 
@@ -49,7 +50,7 @@ fn main() {
             "Deleted {} files listed in deletefiles.txt",
             delete_files.items
         )),
-        Err(e) => eprintln!("Error: {}", e),
+        Err(e) => tracing::error!("{}", e),
     }
 
     match hdiff_map.patch() {
@@ -57,7 +58,7 @@ fn main() {
             "Patched {} files listed in hdiffmap.json",
             hdiff_map.items.lock().unwrap()
         )),
-        Err(e) => eprintln!("Error: {}", e),
+        Err(e) => tracing::error!("{}", e),
     }
 
     for msg in log_msg {
