@@ -29,14 +29,25 @@ fn main() {
     init_tracing();
 
     let args: Vec<String> = std::env::args().collect();
+    let mut path = PathBuf::new();
 
-    if args.len() != 2 {
-        println!("Usage: {} [game_folder]", &args[0]);
+    if args.len() > 1 {
+        path = PathBuf::from(&args[1]);
+    } else {
+        let mut executing_dir: Vec<&str> = args[0].split("\\").collect();
+        executing_dir.pop();
 
-        wait_for_input();
+        let game_path: PathBuf = PathBuf::from(executing_dir.join("\\"));
+        let sr_exe = game_path.join("StarRail.exe");
+
+        if sr_exe.exists() && sr_exe.is_file() {
+            path = game_path
+        } else {
+            println!("Usage: {} [game_folder]", &args[0]);
+
+            wait_for_input();
+        }
     }
-
-    let path = PathBuf::from(&args[1]);
 
     let mut delete_files = DeleteFiles::new(&path);
     let mut hdiff_map = HDiffMap::new(&path);
