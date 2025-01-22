@@ -12,7 +12,9 @@ use deletefiles::DeleteFiles;
 use hdiffmap::HDiffMap;
 
 fn init_tracing() {
+    #[cfg(target_os = "windows")]
     let _ = ansi_term::enable_ansi_support();
+
     tracing_subscriber::fmt().without_time().init();
 }
 
