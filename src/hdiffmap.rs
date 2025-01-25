@@ -1,16 +1,18 @@
+use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::Value;
-use thiserror::Error;
-use rayon::prelude::*;
 use std::{
-    fs::{self},
+    fs::{self, remove_file},
     io::{self},
     path::PathBuf,
-    process::Command, sync::{Arc, Mutex},
+    process::Command,
+    sync::{Arc, Mutex},
 };
+use thiserror::Error;
 
 pub struct HDiffMap {
     game_path: PathBuf,
+    hpatchz_path: PathBuf,
     pub items: Arc<Mutex<u32>>,
 }
 
@@ -32,9 +34,10 @@ struct DiffMap {
 }
 
 impl HDiffMap {
-    pub fn new(game_path: &PathBuf) -> Self {
+    pub fn new(game_path: PathBuf, hpatchz_path: PathBuf) -> Self {
         Self {
-            game_path: game_path.clone(),
+            game_path,
+            hpatchz_path,
             items: Arc::new(Mutex::new(0)),
         }
     }
@@ -59,10 +62,10 @@ impl HDiffMap {
 
     pub fn patch(&mut self) -> Result<(), PatchError> {
         let path = &self.game_path;
-        let hdiff = self.load_diff_map()?;
+        let hdiff = &self.load_diff_map()?;
 
         hdiff.into_par_iter().for_each(|entry| {
-            let output = Command::new("hpatchz")
+            let output = Command::new(&self.hpatchz_path)
                 .arg(path.join(&entry.source_file_name))
                 .arg(path.join(&entry.patch_file_name))
                 .arg(path.join(&entry.target_file_name))
@@ -80,6 +83,26 @@ impl HDiffMap {
                 tracing::error!("{}", String::from_utf8_lossy(&output.stderr).trim());
             }
         });
+
+        // Delete old hdiff files (source_file_name, patch_file_name)
+        // Should be safe to delete now since we make checks to make sure hpatchz exists
+        let files_to_delete: Vec<PathBuf> = hdiff
+            .iter()
+            .flat_map(|entry| {
+                vec![
+                    path.join(&entry.source_file_name),
+                    path.join(&entry.patch_file_name),
+                ]
+            })
+            .collect();
+
+        for file in files_to_delete {
+            if let Err(e) = remove_file(&file) {
+                tracing::error!("Failed to remove {}: {}", file.display(), e)
+            } else {
+                tracing::info!("Removed old hdiff file: {}", file.display())
+            }
+        }
 
         Ok(())
     }
