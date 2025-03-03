@@ -27,49 +27,61 @@ fn wait_for_input() {
     stdout().flush().unwrap();
 
     stdin().read_line(&mut String::new()).unwrap();
-
-    process::exit(1)
 }
 
-fn get_hpatchz_from_env() -> PathBuf {
-    if let Ok(path_var) = env::var("PATH") {
-        let delimiter = if cfg!(windows) { ";" } else { ":" };
+fn get_hpatchz_path() -> Result<PathBuf, &'static str> {
+    let hpatchz_filename = "hpatchz.exe";
 
-        if let Some(hpatchz_path) = path_var.split(delimiter).map(PathBuf::from).find(|p| {
-            let hpatchz = p.join("hpatchz.exe");
-            hpatchz.is_file()
-        }) {
-            return hpatchz_path.join("hpatchz.exe");
-        }
+    // Find hpatchz in the current directory first
+    let local_path = PathBuf::from(hpatchz_filename);
+    if local_path.is_file() {
+        return Ok(local_path);
     }
 
-    println!("Hpatchz not found in path!");
-    wait_for_input();
+    // Find hpatchz in system PATH
+    let path_var = env::var("PATH").map_err(|_| "Failed to read PATH environment variable")?;
+    path_var
+        .split(";")
+        .map(PathBuf::from)
+        .find(|p| p.join(hpatchz_filename).is_file())
+        .ok_or("hpatchz not found in current directory or system PATH")
+}
 
-    // Download if not found
+fn get_game_path(args: &[String]) -> Result<PathBuf, String> {
+    if args.len() > 1 {
+        return Ok(PathBuf::from(&args[1]));
+    }
 
-    PathBuf::new()
+    let cur_dir = env::current_dir().map_err(|e| format!("Failed to get current directory: {}", e))?;
+    let sr_exe: PathBuf = cur_dir.join("StarRail.exe");
+
+    if sr_exe.is_file() {
+        return Ok(sr_exe);
+    } else {
+        Err(format!("Usage: {} [game_folder]", args[0]))
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     init_tracing();
 
     let args: Vec<String> = std::env::args().collect();
-    let hpatchz_path = get_hpatchz_from_env();
 
-    let game_path = if args.len() > 1 {
-        PathBuf::from(&args[1])
-    } else {
-        let cur_dir = env::current_dir()?;
-        let sr_exe: PathBuf = cur_dir.join("StarRail.exe");
-
-        if sr_exe.is_file() {
-            cur_dir
-        } else {
-            println!("Usage: {} [game_folder]", &args[0]);
+    let hpatchz_path = match get_hpatchz_path() {
+        Ok(path) => path,
+        Err(err) => {
+            println!("{}", err);
             wait_for_input();
+            process::exit(1)
+        }
+    };
 
-            PathBuf::new()
+    let game_path = match get_game_path(&args) {
+        Ok(path) => path,
+        Err(err) => {
+            println!("{}", err);
+            wait_for_input();
+            process::exit(1)
         }
     };
 
@@ -86,14 +98,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::error!("{}", e);
     }
 
-    tracing::info!(
-        "Deleted {} files listed in deletefiles.txt",
-        delete_files.items
-    );
-    tracing::info!(
-        "Patched {} files listed in hdiffmap.json",
-        hdiff_map.items.lock().unwrap()
-    );
+    (delete_files.items > 0).then(|| {
+        tracing::info!("Deleted {} files listed in deletefiles.txt", delete_files.items)
+    });
+
+    let count = *hdiff_map.items.lock().unwrap();
+    (count > 0).then(|| {
+        tracing::info!("Patched {} files listed in hdiffmap.json", count)
+    });
 
     tracing::info!("Finished in {:.2?}", now.elapsed());
 
