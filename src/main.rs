@@ -56,7 +56,7 @@ fn get_game_path(args: &[String]) -> Result<PathBuf, String> {
     let sr_exe: PathBuf = cur_dir.join("StarRail.exe");
 
     if sr_exe.is_file() {
-        return Ok(sr_exe);
+        return Ok(cur_dir);
     } else {
         Err(format!("Usage: {} [game_folder]", args[0]))
     }
