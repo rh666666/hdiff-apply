@@ -2,9 +2,8 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::Value;
 use std::{
-    fs::{self, remove_file},
     io::{self},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
     sync::{Arc, Mutex},
 };
@@ -50,7 +49,7 @@ impl HDiffMap {
             return Err(PatchError::NotFound(format!("{}", path.display())));
         }
 
-        let data = fs::read_to_string(&path)?;
+        let data = std::fs::read_to_string(&path)?;
         let deserialized: Value = serde_json::from_str(&data).unwrap();
 
         let diff_map = deserialized
@@ -60,49 +59,46 @@ impl HDiffMap {
         Ok(serde_json::from_value(diff_map.clone()).unwrap())
     }
 
+    fn remove_file<P: AsRef<Path>>(&self, path: P) {
+        match std::fs::remove_file(&path) {
+            Ok(_) => tracing::info!("Removed old hdiff file: {}", path.as_ref().display()),
+            Err(e) => tracing::error!("Failed to remove {}: {}", path.as_ref().display(), e),
+        }
+    }
+
     pub fn patch(&mut self) -> Result<(), PatchError> {
         let path = &self.game_path;
         let hdiff = &self.load_diff_map()?;
 
         hdiff.into_par_iter().for_each(|entry| {
+            let source_file_name = &entry.source_file_name;
+            let patch_file_name = &entry.patch_file_name;
+            let target_file_name = &entry.target_file_name;
+
             let output = Command::new(&self.hpatchz_path)
-                .arg(path.join(&entry.source_file_name))
-                .arg(path.join(&entry.patch_file_name))
-                .arg(path.join(&entry.target_file_name))
+                .arg(path.join(source_file_name))
+                .arg(path.join(patch_file_name))
+                .arg(path.join(target_file_name))
                 .output()
-                .expect("Failed to execute hpatchz");
+                .unwrap();
+
+            let mut items = self.items.lock().unwrap();
 
             if !output.stdout.is_empty() {
                 tracing::info!("{}", String::from_utf8_lossy(&output.stdout).trim());
 
-                let mut items = self.items.lock().unwrap();
                 *items += 1;
             }
 
             if !output.stderr.is_empty() {
                 tracing::error!("{}", String::from_utf8_lossy(&output.stderr).trim());
             }
-        });
 
-        // Delete old hdiff files (source_file_name, patch_file_name)
-        // Should be safe to delete now since we make checks to make sure hpatchz exists
-        let files_to_delete: Vec<PathBuf> = hdiff
-            .iter()
-            .flat_map(|entry| {
-                vec![
-                    path.join(&entry.source_file_name),
-                    path.join(&entry.patch_file_name),
-                ]
-            })
-            .collect();
-
-        for file in files_to_delete {
-            if let Err(e) = remove_file(&file) {
-                tracing::error!("Failed to remove {}: {}", file.display(), e)
-            } else {
-                tracing::info!("Removed old hdiff file: {}", file.display())
+            if *items > 0 {
+                self.remove_file(source_file_name);
+                self.remove_file(patch_file_name);
             }
-        }
+        });
 
         Ok(())
     }
