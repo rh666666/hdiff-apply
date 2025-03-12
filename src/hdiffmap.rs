@@ -95,8 +95,10 @@ impl HDiffMap {
             }
 
             if *items > 0 {
-                self.remove_file(source_file_name);
                 self.remove_file(patch_file_name);
+                if !(source_file_name == target_file_name) {
+                    self.remove_file(source_file_name);
+                }
             }
         });
 
