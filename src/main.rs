@@ -9,6 +9,7 @@ use std::{
 mod deletefiles;
 mod hdiffmap;
 
+use crossterm::{execute, terminal::SetTitle};
 use deletefiles::DeleteFiles;
 use hdiffmap::HDiffMap;
 
@@ -63,6 +64,11 @@ fn get_game_path(args: &[String]) -> Result<PathBuf, String> {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    execute!(
+        stdout(),
+        SetTitle(format!("{} v{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")))
+    )?;
+
     init_tracing();
 
     let args: Vec<String> = std::env::args().collect();
