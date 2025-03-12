@@ -79,6 +79,7 @@ impl HDiffMap {
                 .arg(path.join(source_file_name))
                 .arg(path.join(patch_file_name))
                 .arg(path.join(target_file_name))
+                .arg("-f")
                 .output()
                 .unwrap();
 
