@@ -45,6 +45,7 @@ fn get_hpatchz_path() -> Result<PathBuf, &'static str> {
         .split(";")
         .map(PathBuf::from)
         .find(|p| p.join(hpatchz_filename).is_file())
+        .map(|p| p.join(&hpatchz_filename))
         .ok_or("hpatchz not found in current directory or system PATH")
 }
 
