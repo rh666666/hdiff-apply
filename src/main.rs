@@ -1,5 +1,6 @@
 use std::{
-    env,
+    env::{self, temp_dir},
+    fs::File,
     io::{stdin, stdout, Write},
     path::PathBuf,
     process,
@@ -8,6 +9,7 @@ use std::{
 
 mod deletefiles;
 mod hdiffmap;
+mod hpatchz;
 
 use crossterm::{execute, terminal::SetTitle};
 use deletefiles::DeleteFiles;
@@ -32,21 +34,12 @@ fn wait_for_input() {
 
 fn get_hpatchz_path() -> Result<PathBuf, &'static str> {
     let hpatchz_filename = "hpatchz.exe";
+    let temp_path = temp_dir().join(hpatchz_filename);
 
-    // Find hpatchz in the current directory first
-    let local_path = PathBuf::from(hpatchz_filename);
-    if local_path.is_file() {
-        return Ok(local_path);
-    }
+    let mut file = File::create(&temp_path).map_err(|_| "Failed to create hpatchz file")?;
+    file.write_all(hpatchz::EMBEDDED_BINARY).map_err(|_| "Failed to write binary")?;
 
-    // Find hpatchz in system PATH
-    let path_var = env::var("PATH").map_err(|_| "Failed to read PATH environment variable")?;
-    path_var
-        .split(";")
-        .map(PathBuf::from)
-        .find(|p| p.join(hpatchz_filename).is_file())
-        .map(|p| p.join(&hpatchz_filename))
-        .ok_or("hpatchz not found in current directory or system PATH")
+    Ok(temp_path)
 }
 
 fn get_game_path(args: &[String]) -> Result<PathBuf, String> {
