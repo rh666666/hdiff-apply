@@ -1,7 +1,7 @@
 # hdiff-apply
 
 ## Requirements:
-- [Rust](https://www.rust-lang.org/tools/install)
+- [Rust](https://www.rust-lang.org/tools/install) for compiling
 
 ## Command line usage:
 ```bash
