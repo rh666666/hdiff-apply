@@ -71,14 +71,14 @@ impl HDiffMap {
         let hdiff = &self.load_diff_map()?;
 
         hdiff.into_par_iter().for_each(|entry| {
-            let source_file_name = &entry.source_file_name;
-            let patch_file_name = &entry.patch_file_name;
-            let target_file_name = &entry.target_file_name;
+            let source_file_name = path.join(&entry.source_file_name);
+            let patch_file_name = path.join(&entry.patch_file_name);
+            let target_file_name = path.join(&entry.target_file_name);
 
             let output = Command::new(&self.hpatchz_path)
-                .arg(path.join(source_file_name))
-                .arg(path.join(patch_file_name))
-                .arg(path.join(target_file_name))
+                .arg(&source_file_name)
+                .arg(&patch_file_name)
+                .arg(&target_file_name)
                 .arg("-f")
                 .output()
                 .unwrap();
