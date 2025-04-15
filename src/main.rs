@@ -90,10 +90,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let now = Instant::now();
 
+    tracing::info!("Deleting old files...");
     if let Err(e) = delete_files.remove() {
         tracing::error!("{}", e);
     }
 
+    tracing::info!("Patching files...");
     if let Err(e) = hdiff_map.patch() {
         tracing::error!("{}", e);
     }

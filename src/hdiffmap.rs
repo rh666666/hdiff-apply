@@ -61,7 +61,7 @@ impl HDiffMap {
 
     fn remove_file<P: AsRef<Path>>(&self, path: P) {
         match std::fs::remove_file(&path) {
-            Ok(_) => tracing::info!("Removed old hdiff file: {}", path.as_ref().display()),
+            Ok(_) => {},
             Err(e) => tracing::error!("Failed to remove {}: {}", path.as_ref().display(), e),
         }
     }
@@ -86,8 +86,6 @@ impl HDiffMap {
             let mut items = self.items.lock().unwrap();
 
             if !output.stdout.is_empty() {
-                tracing::info!("{}", String::from_utf8_lossy(&output.stdout).trim());
-
                 *items += 1;
             }
 

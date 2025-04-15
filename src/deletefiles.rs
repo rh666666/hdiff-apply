@@ -46,7 +46,6 @@ impl DeleteFiles {
 
             match remove_file(&full_path) {
                 Ok(_) => {
-                    tracing::info!("Deleted {}", full_path.display());
                     self.items += 1;
                 }
                 Err(e) => tracing::error!("Failed to delete {}: {}", full_path.display(), e),
