@@ -2,16 +2,18 @@ use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json::Value;
 use std::{
-    io::{self},
-    path::{Path, PathBuf},
+    path::Path,
     process::Command,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc, Mutex,
+    },
 };
 use thiserror::Error;
 
-pub struct HDiffMap {
-    game_path: PathBuf,
-    hpatchz_path: PathBuf,
+pub struct HDiffMap<'a, 'b> {
+    game_path: &'a Path,
+    hpatchz_path: &'b Path,
     pub items: Arc<Mutex<u32>>,
 }
 
@@ -22,7 +24,7 @@ pub enum PatchError {
     #[error("{0} doesn't exist, skipping")]
     NotFound(String),
     #[error("IO error occurred: {0}")]
-    IoError(#[from] io::Error),
+    IoError(#[from] std::io::Error),
 }
 
 #[derive(Deserialize)]
@@ -32,8 +34,8 @@ struct DiffMap {
     patch_file_name: String,
 }
 
-impl HDiffMap {
-    pub fn new(game_path: PathBuf, hpatchz_path: PathBuf) -> Self {
+impl<'a, 'b> HDiffMap<'a, 'b> {
+    pub fn new(game_path: &'a Path, hpatchz_path: &'b Path) -> Self {
         Self {
             game_path,
             hpatchz_path,
@@ -42,8 +44,7 @@ impl HDiffMap {
     }
 
     fn load_diff_map(&self) -> Result<Vec<DiffMap>, PatchError> {
-        let mut path = self.game_path.clone();
-        path.push("hdiffmap.json");
+        let path = self.game_path.join("hdiffmap.json");
 
         if !path.exists() {
             return Err(PatchError::NotFound(format!("{}", path.display())));
@@ -60,47 +61,52 @@ impl HDiffMap {
     }
 
     fn remove_file<P: AsRef<Path>>(&self, path: P) {
-        match std::fs::remove_file(&path) {
-            Ok(_) => {},
-            Err(e) => tracing::error!("Failed to remove {}: {}", path.as_ref().display(), e),
+        if let Err(e) = std::fs::remove_file(&path) {
+            tracing::error!("Failed to remove {}: {}", path.as_ref().display(), e)
         }
     }
 
     pub fn patch(&mut self) -> Result<(), PatchError> {
-        let path = &self.game_path;
-        let hdiff = &self.load_diff_map()?;
+        let path = self.game_path;
+        let hpatchz_path = self.hpatchz_path;
 
-        hdiff.into_par_iter().for_each(|entry| {
+        let diff_map = self.load_diff_map()?;
+        let counter = AtomicU32::new(0);
+
+        diff_map.into_par_iter().for_each(|entry| {
             let source_file_name = path.join(&entry.source_file_name);
             let patch_file_name = path.join(&entry.patch_file_name);
             let target_file_name = path.join(&entry.target_file_name);
 
-            let output = Command::new(&self.hpatchz_path)
+            let output = Command::new(&hpatchz_path)
                 .arg(&source_file_name)
                 .arg(&patch_file_name)
                 .arg(&target_file_name)
                 .arg("-f")
-                .output()
-                .unwrap();
+                .output();
 
-            let mut items = self.items.lock().unwrap();
+            match output {
+                Ok(out) => {
+                    if out.status.success() {
+                        counter.fetch_add(1, Ordering::Relaxed);
 
-            if !output.stdout.is_empty() {
-                *items += 1;
-            }
-
-            if !output.stderr.is_empty() {
-                tracing::error!("{}", String::from_utf8_lossy(&output.stderr).trim());
-            }
-
-            if *items > 0 {
-                self.remove_file(patch_file_name);
-                if !(source_file_name == target_file_name) {
-                    self.remove_file(source_file_name);
+                        self.remove_file(patch_file_name);
+                        if source_file_name != target_file_name {
+                            self.remove_file(source_file_name);
+                        }
+                    } else {
+                        if !out.stderr.is_empty() {
+                            tracing::error!("{}", String::from_utf8_lossy(&out.stderr).trim());
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Failed to execute patch command: {}", e);
                 }
             }
         });
 
+        *self.items.lock().unwrap() = counter.load(Ordering::Relaxed);
         Ok(())
     }
 }
