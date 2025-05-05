@@ -61,8 +61,9 @@ impl<'a, 'b> HDiffMap<'a, 'b> {
     }
 
     fn remove_file<P: AsRef<Path>>(&self, path: P) {
-        if let Err(e) = std::fs::remove_file(&path) {
-            tracing::error!("Failed to remove {}: {}", path.as_ref().display(), e)
+        match std::fs::remove_file(&path) {
+            Ok(_) => tracing::info!("Removed old hdiff file: {}", path.as_ref().display()),
+            Err(e) => tracing::error!("Failed to remove {}: {}", path.as_ref().display(), e),
         }
     }
 
@@ -89,6 +90,10 @@ impl<'a, 'b> HDiffMap<'a, 'b> {
                 Ok(out) => {
                     if out.status.success() {
                         counter.fetch_add(1, Ordering::Relaxed);
+
+                        if !out.stdout.is_empty() {
+                            tracing::info!("{}", String::from_utf8_lossy(&out.stdout).trim());
+                        }
 
                         self.remove_file(patch_file_name);
                         if source_file_name != target_file_name {

@@ -108,8 +108,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let count = *hdiff_map.items.lock().unwrap();
     (count > 0).then(|| tracing::info!("Patched {} files listed in hdiffmap.json", count));
 
-    tracing::info!("Finished in {:.2?}", now.elapsed());
-
+    tracing::info!("Program finished executing in {:.2?}", now.elapsed());
     wait_for_input();
 
     Ok(())
