@@ -1,8 +1,5 @@
 use std::{
-    env::{current_dir, temp_dir},
-    fs::File,
-    io::{stdin, stdout, Write},
-    path::PathBuf,
+    io::stdout,
     process,
     time::Instant,
 };
@@ -10,52 +7,11 @@ use std::{
 mod deletefiles;
 mod hdiffmap;
 mod hpatchz;
+mod utils;
 
 use crossterm::{execute, terminal::SetTitle};
 use deletefiles::DeleteFiles;
 use hdiffmap::HDiffMap;
-
-fn init_tracing() {
-    #[cfg(target_os = "windows")]
-    let _ = ansi_term::enable_ansi_support();
-
-    tracing_subscriber::fmt()
-        .without_time()
-        .with_max_level(tracing::Level::DEBUG)
-        .init();
-}
-
-fn wait_for_input() {
-    print!("Press enter to exit");
-    stdout().flush().unwrap();
-
-    stdin().read_line(&mut String::new()).unwrap();
-}
-
-fn get_hpatchz_path() -> Result<PathBuf, &'static str> {
-    let temp_path = temp_dir().join("hpatchz.exe");
-
-    let mut file = File::create(&temp_path).map_err(|_| "Failed to create hpatchz file")?;
-    file.write_all(hpatchz::HPATCHZ_EXE)
-        .map_err(|_| "Failed to write binary")?;
-
-    Ok(temp_path)
-}
-
-fn get_game_path(args: &[String]) -> Result<PathBuf, String> {
-    if args.len() > 1 {
-        return Ok(PathBuf::from(&args[1]));
-    }
-
-    let cwd = current_dir().map_err(|e| format!("Failed to get current directory: {}", e))?;
-    let sr_exe = cwd.join("StarRail.exe");
-
-    if sr_exe.is_file() {
-        return Ok(cwd);
-    } else {
-        Err(format!("Usage: {} [game_folder]", args[0]))
-    }
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     execute!(
@@ -67,19 +23,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ))
     )?;
 
-    init_tracing();
+    utils::init_tracing();
 
     let args: Vec<String> = std::env::args().collect();
 
-    let hpatchz_path = get_hpatchz_path().unwrap_or_else(|err| {
+    let hpatchz_path = utils::get_hpatchz_path().unwrap_or_else(|err| {
         println!("{}", err);
-        wait_for_input();
+        utils::wait_for_input();
         process::exit(1);
     });
 
-    let game_path = get_game_path(&args).unwrap_or_else(|err| {
+    let game_path = utils::get_game_path(&args).unwrap_or_else(|err| {
         println!("{}", err);
-        wait_for_input();
+        utils::wait_for_input();
         process::exit(1);
     });
 
@@ -109,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     (count > 0).then(|| tracing::info!("Patched {} files listed in hdiffmap.json", count));
 
     tracing::info!("Program finished executing in {:.2?}", now.elapsed());
-    wait_for_input();
+    utils::wait_for_input();
 
     Ok(())
 }
