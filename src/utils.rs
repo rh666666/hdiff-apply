@@ -5,7 +5,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::hpatchz;
+use crate::{hpatchz, Error};
 
 pub fn init_tracing() {
     #[cfg(target_os = "windows")]
@@ -24,27 +24,27 @@ pub fn wait_for_input() {
     stdin().read_line(&mut String::new()).unwrap();
 }
 
-pub fn get_hpatchz_path() -> Result<PathBuf, &'static str> {
+pub fn get_hpatchz() -> Result<PathBuf, Error> {
     let temp_path = temp_dir().join("hpatchz.exe");
 
-    let mut file = File::create(&temp_path).map_err(|_| "Failed to create hpatchz file")?;
-    file.write_all(hpatchz::HPATCHZ_EXE)
-        .map_err(|_| "Failed to write binary")?;
+    let mut file = File::create(&temp_path)?;
+    file.write_all(hpatchz::HPATCHZ_EXE)?;
 
     Ok(temp_path)
 }
 
-pub fn get_game_path(args: &[String]) -> Result<PathBuf, String> {
-    if args.len() > 1 {
-        return Ok(PathBuf::from(&args[1]));
-    }
+pub fn determine_game_path(game_path: Option<String>) -> Result<PathBuf, Error> {
+    match game_path {
+        Some(path) => Ok(PathBuf::from(path)),
+        None => {
+            let cwd = current_dir()?;
+            let sr_exe = cwd.join("StarRail.exe");
 
-    let cwd = current_dir().map_err(|e| format!("Failed to get current directory: {}", e))?;
-    let sr_exe = cwd.join("StarRail.exe");
-
-    if sr_exe.is_file() {
-        return Ok(cwd);
-    } else {
-        Err(format!("Usage: {} [game_folder]", args[0]))
+            if sr_exe.is_file() {
+                Ok(cwd)
+            } else {
+                Err(Error::Path(cwd.display().to_string()))
+            }
+        }
     }
 }

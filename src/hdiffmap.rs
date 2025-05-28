@@ -20,11 +20,11 @@ pub struct HDiffMap<'a, 'b> {
 #[derive(Debug, Error)]
 pub enum PatchError {
     #[error("hdiffmap.json structure changed!")]
-    JsonError(),
+    Json(),
     #[error("{0} doesn't exist, skipping")]
     NotFound(String),
-    #[error("IO error occurred: {0}")]
-    IoError(#[from] std::io::Error),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 #[derive(Deserialize)]
@@ -55,7 +55,7 @@ impl<'a, 'b> HDiffMap<'a, 'b> {
 
         let diff_map = deserialized
             .get("diff_map")
-            .ok_or(PatchError::JsonError())?;
+            .ok_or(PatchError::Json())?;
 
         Ok(serde_json::from_value(diff_map.clone()).unwrap())
     }

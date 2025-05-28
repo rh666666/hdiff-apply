@@ -15,8 +15,8 @@ pub struct DeleteFiles<'a> {
 pub enum DeleteFileError {
     #[error("{0} doesn't exist, skipping")]
     NotFound(String),
-    #[error("IO error occurred: {0}")]
-    IoError(#[from] std::io::Error),
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 impl<'a> DeleteFiles<'a> {
