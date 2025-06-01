@@ -64,11 +64,10 @@ pub fn wait_for_confirmation(default_choice: bool) -> bool {
 
 pub fn get_update_archive(game_path: &PathBuf) -> Result<PathBuf, Error> {
     for entry in game_path.read_dir()? {
-        let entry = entry?;
-        let path = entry.path();
+        let path = entry?.path();
 
-        if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
-            if name.to_lowercase().ends_with(".7z") {
+        if let Some(ext) = path.extension() {
+            if ext.eq_ignore_ascii_case("7z") {
                 return Ok(path);
             }
         }
