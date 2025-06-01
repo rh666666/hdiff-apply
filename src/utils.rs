@@ -1,11 +1,11 @@
 use std::{
     env::{current_dir, temp_dir},
-    fs::File,
+    fs::{create_dir, File},
     io::{stdin, stdout, Write},
     path::PathBuf,
 };
 
-use crate::{hpatchz, Error};
+use crate::{binary_version::BinaryVersion, hpatchz, Error, TEMP_DIR_NAME};
 
 pub fn init_tracing() {
     #[cfg(target_os = "windows")]
@@ -25,7 +25,7 @@ pub fn wait_for_input() {
 }
 
 pub fn get_hpatchz() -> Result<PathBuf, Error> {
-    let temp_path = temp_dir().join("hpatchz.exe");
+    let temp_path = temp_dir().join(TEMP_DIR_NAME).join("hpatchz.exe");
 
     let mut file = File::create(&temp_path)?;
     file.write_all(hpatchz::HPATCHZ_EXE)?;
@@ -43,8 +43,49 @@ pub fn determine_game_path(game_path: Option<String>) -> Result<PathBuf, Error> 
             if sr_exe.is_file() {
                 Ok(cwd)
             } else {
-                Err(Error::Path(cwd.display().to_string()))
+                Err(Error::PathNotFound(cwd.display().to_string()))
             }
         }
     }
+}
+
+pub fn wait_for_confirmation(default_choice: bool) -> bool {
+    stdout().flush().unwrap();
+
+    let mut input = String::new();
+    stdin().read_line(&mut input).unwrap();
+
+    match input.trim().to_lowercase().as_str() {
+        "y" | "yes" => return true,
+        "n" | "no" => return false,
+        _ => return default_choice,
+    }
+}
+
+pub fn get_update_archive(game_path: &PathBuf) -> Result<PathBuf, Error> {
+    for entry in game_path.read_dir()? {
+        let path = entry?.path();
+
+        if let Some(ext) = path.extension() {
+            if ext.eq_ignore_ascii_case("7z") {
+                return Ok(path);
+            }
+        }
+    }
+
+    Err(Error::ArchiveNotFound())
+}
+
+pub fn create_temp_dir(temp_dir_name: &str) -> Result<PathBuf, Error> {
+    let path = temp_dir().join(temp_dir_name);
+    if !path.exists() {
+        create_dir(&path)?;
+    }
+    Ok(path)
+}
+
+pub fn verify_hdiff_version(client_version: &BinaryVersion, hdiff_version: &BinaryVersion) -> bool {
+    client_version.major_version == hdiff_version.major_version
+        && client_version.minor_version == hdiff_version.minor_version
+        && hdiff_version.patch_version == client_version.patch_version + 1
 }
