@@ -76,8 +76,8 @@ pub fn get_update_archive(game_path: &PathBuf) -> Result<PathBuf, Error> {
     Err(Error::ArchiveNotFound())
 }
 
-pub fn create_temp_dir(path: &str) -> Result<PathBuf, Error> {
-    let path = temp_dir().join(path);
+pub fn create_temp_dir(temp_dir_name: &str) -> Result<PathBuf, Error> {
+    let path = temp_dir().join(temp_dir_name);
     if !path.exists() {
         create_dir(&path)?;
     }
