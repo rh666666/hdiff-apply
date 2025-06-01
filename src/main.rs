@@ -97,7 +97,6 @@ fn run() -> Result<(), Error> {
 
     let now = Instant::now();
 
-    tracing::info!("Procedures: {:?}", procedures);
     run_procedures(&procedures, &game_path, &hpatchz_path)?;
 
     tracing::info!("Updated in {:.2?}", now.elapsed());
