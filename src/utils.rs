@@ -67,7 +67,11 @@ pub fn get_update_archive(game_path: &PathBuf) -> Result<PathBuf, Error> {
         let path = entry?.path();
 
         if let Some(ext) = path.extension() {
-            if ext.eq_ignore_ascii_case("7z") {
+            if ext.eq_ignore_ascii_case("7z")
+                || ext.eq_ignore_ascii_case("zip")
+                || ext.eq_ignore_ascii_case("rar")
+                || ext.eq_ignore_ascii_case("tar")
+            {
                 return Ok(path);
             }
         }
