@@ -26,8 +26,6 @@ type Error = error::Error;
 enum HdiffProcedure {
     #[default]
     Update,
-    Backup,
-    Revert,
 }
 
 #[derive(Parser, Debug)]
@@ -141,8 +139,6 @@ fn run_procedures(
                     tracing::info!("Patched {} files listed in hdiffmap.json", patch_items)
                 }
             }
-            HdiffProcedure::Backup => (),
-            HdiffProcedure::Revert => (),
         }
     }
 
