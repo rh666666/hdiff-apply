@@ -48,7 +48,7 @@ fn run() -> Result<(), Error> {
     utils::init_tracing();
 
     stdout().queue(SetTitle(format!(
-        "{} v{} ",
+        "{} v{} | Made by nie",
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION")
     )))?;
