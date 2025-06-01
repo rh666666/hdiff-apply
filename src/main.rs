@@ -112,8 +112,12 @@ fn run_procedures(
     for proc in procedures {
         match proc {
             HdiffProcedure::Update => {
-                tracing::info!("Extracting hdiff!");
                 let update_archive_path = utils::get_update_archive(&game_path)?;
+
+                let archive_str = &update_archive_path.display().to_string();
+                let archive_name = archive_str.split('\\').last().unwrap_or("hdiff");
+
+                tracing::info!("Extracting {}", archive_name);
                 SEVEN_Z.extract_to(&update_archive_path, &game_path)?;
 
                 let mut delete_files = DeleteFiles::new(&game_path);
