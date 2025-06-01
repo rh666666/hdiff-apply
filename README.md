@@ -10,7 +10,7 @@
 4. Run `hdiff-apply.exe` and wait for it to finish
 
 ## CLI usage:
-```bash
+```
 Usage: hdiff-apply.exe [OPTIONS] [GAME_PATH]
 
 Arguments:
