@@ -1,9 +1,4 @@
-use std::{
-    io::{stdout, Write},
-    path::PathBuf,
-    sync::LazyLock,
-    time::Instant,
-};
+use std::{io::stdout, path::PathBuf, time::Instant};
 
 mod binary_version;
 mod deletefiles;
@@ -38,10 +33,6 @@ struct Args {
 
 pub const TEMP_DIR_NAME: &'static str = "hdiff-apply";
 
-pub const SEVEN_Z: LazyLock<SevenUtil> = LazyLock::new(|| {
-    SevenUtil::new().unwrap_or_else(|_| panic!("7-Zip not found in system registry!"))
-});
-
 fn run() -> Result<(), Error> {
     utils::init_tracing();
 
@@ -59,10 +50,7 @@ fn run() -> Result<(), Error> {
     let game_path = utils::determine_game_path(args.game_path)?;
     let update_archive_path = utils::get_update_archive(&game_path)?;
 
-    print!("Extracting BinaryVersion.bytes");
-    stdout().flush()?;
-
-    SEVEN_Z.extract_specific_file_to(
+    SevenUtil::inst().extract_specific_file_to(
         &update_archive_path,
         "StarRail_Data\\StreamingAssets\\BinaryVersion.bytes",
         &temp_dir_path,
@@ -75,7 +63,6 @@ fn run() -> Result<(), Error> {
 
     let versions_match = utils::verify_hdiff_version(&client_version, &hdiff_version);
     if !versions_match && !args.skip_version_check {
-        println!("");
         return Err(Error::InvalidHdiffVersion(
             client_version.to_string(),
             hdiff_version.to_string(),
@@ -84,7 +71,7 @@ fn run() -> Result<(), Error> {
 
     let update_choice = {
         print!(
-            "\rUpdate client from {} to {} [Yes/No (default: Yes)]: ",
+            "Update client from {} to {} [Yes/No (default: Yes)]: ",
             client_version.to_string(),
             hdiff_version.to_string()
         );
@@ -118,7 +105,7 @@ fn run_procedures(
                 let archive_name = archive_str.split('\\').last().unwrap_or("hdiff");
 
                 tracing::info!("Extracting {}", archive_name);
-                SEVEN_Z.extract_to(&update_archive_path, &game_path)?;
+                SevenUtil::inst().extract_to(&update_archive_path, &game_path)?;
 
                 let mut delete_files = DeleteFiles::new(&game_path);
                 if let Err(e) = delete_files.remove() {
