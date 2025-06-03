@@ -50,6 +50,10 @@ fn run() -> Result<(), Error> {
     let game_path = utils::determine_game_path(args.game_path)?;
     let update_archive_path = utils::get_update_archive(&game_path)?;
 
+    if args.skip_version_check {
+        tracing::warn!("Bypassing version check. This may lead to issues.");
+    }
+
     SevenUtil::inst().extract_specific_file_to(
         &update_archive_path,
         "StarRail_Data\\StreamingAssets\\BinaryVersion.bytes",
