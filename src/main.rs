@@ -4,7 +4,6 @@ mod binary_version;
 mod deletefiles;
 mod error;
 mod hdiffmap;
-mod hpatchz;
 mod seven_util;
 mod utils;
 

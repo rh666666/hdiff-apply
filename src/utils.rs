@@ -5,7 +5,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{binary_version::BinaryVersion, hpatchz, Error, TEMP_DIR_NAME};
+use crate::{binary_version::BinaryVersion, Error, TEMP_DIR_NAME};
 
 pub fn init_tracing() {
     #[cfg(target_os = "windows")]
@@ -27,8 +27,10 @@ pub fn wait_for_input() {
 pub fn get_hpatchz() -> Result<PathBuf, Error> {
     let temp_path = temp_dir().join(TEMP_DIR_NAME).join("hpatchz.exe");
 
+    const HPATCHZ_BIN: &[u8] = include_bytes!("../bin/hpatchz.exe");
+
     let mut file = File::create(&temp_path)?;
-    file.write_all(hpatchz::HPATCHZ_EXE)?;
+    file.write_all(HPATCHZ_BIN)?;
 
     Ok(temp_path)
 }
