@@ -2,7 +2,7 @@ use std::{fs::File, io::Read, path::PathBuf};
 
 use crate::Error;
 
-#[derive(Default)]
+#[derive(Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub struct BinaryVersion {
     pub major_version: u32,
     pub minor_version: u32,

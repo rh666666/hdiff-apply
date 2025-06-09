@@ -5,6 +5,8 @@ use std::{
     path::PathBuf,
 };
 
+use crossterm::{terminal::SetTitle, QueueableCommand};
+
 use crate::{binary_version::BinaryVersion, Error, TEMP_DIR_NAME};
 
 pub fn init_tracing() {
@@ -64,7 +66,8 @@ pub fn wait_for_confirmation(default_choice: bool) -> bool {
     }
 }
 
-pub fn get_update_archive(game_path: &PathBuf) -> Result<PathBuf, Error> {
+pub fn get_update_archives(game_path: &PathBuf) -> Result<Vec<PathBuf>, Error> {
+    let mut paths = Vec::new();
     for entry in game_path.read_dir()? {
         let path = entry?.path();
 
@@ -74,16 +77,20 @@ pub fn get_update_archive(game_path: &PathBuf) -> Result<PathBuf, Error> {
                 || ext.eq_ignore_ascii_case("rar")
                 || ext.eq_ignore_ascii_case("tar")
             {
-                return Ok(path);
+                paths.push(path);
             }
         }
     }
 
-    Err(Error::ArchiveNotFound())
+    if paths.is_empty() {
+        return Err(Error::ArchiveNotFound());
+    }
+
+    Ok(paths)
 }
 
-pub fn create_temp_dir(temp_dir_name: &str) -> Result<PathBuf, Error> {
-    let path = temp_dir().join(temp_dir_name);
+pub fn get_and_create_temp_dir() -> Result<PathBuf, Error> {
+    let path = temp_dir().join(TEMP_DIR_NAME);
     if !path.exists() {
         create_dir(&path)?;
     }
@@ -94,4 +101,26 @@ pub fn verify_hdiff_version(client_version: &BinaryVersion, hdiff_version: &Bina
     client_version.major_version == hdiff_version.major_version
         && client_version.minor_version == hdiff_version.minor_version
         && hdiff_version.patch_version == client_version.patch_version + 1
+}
+
+pub fn set_console_title() -> Result<(), Error> {
+    stdout().queue(SetTitle(format!(
+        "{} v{} | Made by nie",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    )))?;
+    Ok(())
+}
+
+pub fn clean_temp_hdiff_data() -> Result<(), Error> {
+    let temp_path = temp_dir().join(TEMP_DIR_NAME);
+
+    for entry in temp_path.read_dir()? {
+        let path = entry?.path();
+        if path.is_dir() {
+            std::fs::remove_dir_all(path)?
+        }
+    }
+
+    Ok(())
 }
