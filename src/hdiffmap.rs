@@ -14,7 +14,7 @@ use thiserror::Error;
 pub struct HDiffMap<'a, 'b> {
     game_path: &'a Path,
     hpatchz_path: &'b Path,
-    pub items: Arc<Mutex<u32>>,
+    count: Arc<Mutex<u32>>,
 }
 
 #[derive(Debug, Error)]
@@ -39,23 +39,19 @@ impl<'a, 'b> HDiffMap<'a, 'b> {
         Self {
             game_path,
             hpatchz_path,
-            items: Arc::new(Mutex::new(0)),
+            count: Arc::new(Mutex::new(0)),
         }
     }
 
-    fn load_diff_map(&self) -> Result<Vec<DiffMap>, PatchError> {
-        let path = self.game_path.join("hdiffmap.json");
-
-        if !path.exists() {
-            return Err(PatchError::NotFound(format!("{}", path.display())));
+    fn load_diff_map(&self, hdiffmap_path: &Path) -> Result<Vec<DiffMap>, PatchError> {
+        if !hdiffmap_path.exists() {
+            return Err(PatchError::NotFound(format!("{}", hdiffmap_path.display())));
         }
 
-        let data = std::fs::read_to_string(&path)?;
+        let data = std::fs::read_to_string(&hdiffmap_path)?;
         let deserialized: Value = serde_json::from_str(&data).unwrap();
 
-        let diff_map = deserialized
-            .get("diff_map")
-            .ok_or(PatchError::Json())?;
+        let diff_map = deserialized.get("diff_map").ok_or(PatchError::Json())?;
 
         Ok(serde_json::from_value(diff_map.clone()).unwrap())
     }
@@ -67,11 +63,11 @@ impl<'a, 'b> HDiffMap<'a, 'b> {
         }
     }
 
-    pub fn patch(&mut self) -> Result<(), PatchError> {
+    pub fn patch(&mut self, hdiffmap_path: &Path) -> Result<(), PatchError> {
         let path = self.game_path;
         let hpatchz_path = self.hpatchz_path;
 
-        let diff_map = self.load_diff_map()?;
+        let diff_map = self.load_diff_map(hdiffmap_path)?;
         let counter = AtomicU32::new(0);
 
         diff_map.into_par_iter().for_each(|entry| {
@@ -111,7 +107,11 @@ impl<'a, 'b> HDiffMap<'a, 'b> {
             }
         });
 
-        *self.items.lock().unwrap() = counter.load(Ordering::Relaxed);
+        *self.count.lock().unwrap() = counter.load(Ordering::Relaxed);
         Ok(())
+    }
+
+    pub fn count(&self) -> u32 {
+        *self.count.lock().unwrap()
     }
 }
